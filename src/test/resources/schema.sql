@@ -3,5 +3,5 @@ CREATE TABLE IF NOT EXISTS report_config (
     report_code VARCHAR(255) NOT NULL,
     version VARCHAR(255) NOT NULL,
     yaml_config CLOB NOT NULL,
-    template_bytes BLOB
+    template_bytes BYTEA
 );
