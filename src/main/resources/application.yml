@@ -16,4 +16,4 @@ spring:
       enabled: true
 
 reporting:
-  output-dir: ${java.io.tmpdir}/report-outputs
+  output-dir: report-outputs
