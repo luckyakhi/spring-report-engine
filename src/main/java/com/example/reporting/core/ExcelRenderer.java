@@ -46,12 +46,16 @@ public class ExcelRenderer {
         for (String k : data.keySet()) ctx.putVar(k, data.get(k));
         ctx.putVar("meta", meta);
 
-        PoiTransformer transformer = PoiTransformer.createSxssfTransformer(templateStream, 1000, true);
-        JxlsHelper.getInstance().setUseFastFormulaProcessor(true).processTemplate(ctx, transformer);
-        try (OutputStream os = Files.newOutputStream(out)) {
-            transformer.write(os);
+        try (Workbook templateWorkbook = WorkbookFactory.create(templateStream)) {
+            PoiTransformer transformer = PoiTransformer.createSxssfTransformer(templateWorkbook, 1000, true);
+            JxlsHelper.getInstance().setUseFastFormulaProcessor(true).processTemplate(ctx, transformer);
+            try (OutputStream os = Files.newOutputStream(out)) {
+                transformer.write(os);
+            }
+            return out;
+        } catch (org.apache.poi.openxml4j.exceptions.InvalidFormatException e) {
+            throw new IOException("Invalid Excel template format", e);
         }
-        return out;
     }
 
     private void writeTable(Sheet sh, List<Map<String,Object>> rows) {
