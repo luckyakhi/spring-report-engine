@@ -50,7 +50,7 @@ public class ExcelRenderer {
             PoiTransformer transformer = PoiTransformer.createSxssfTransformer(templateWorkbook, 1000, true);
             JxlsHelper.getInstance().setUseFastFormulaProcessor(true).processTemplate(ctx, transformer);
             try (OutputStream os = Files.newOutputStream(out)) {
-                transformer.write(os);
+                transformer.getWorkbook().write(os);
             }
             return out;
         } catch (org.apache.poi.openxml4j.exceptions.InvalidFormatException e) {
