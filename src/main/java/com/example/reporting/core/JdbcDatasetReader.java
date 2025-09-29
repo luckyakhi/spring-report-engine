@@ -5,10 +5,10 @@ import com.example.reporting.domain.DatasetDef;
 import com.example.reporting.domain.SourceDef;
 import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
 import org.springframework.stereotype.Component;
+import org.springframework.util.LinkedCaseInsensitiveMap;
 
 import javax.sql.DataSource;
 import java.util.*;
-import java.util.stream.Stream;
 
 @Component
 public class JdbcDatasetReader implements DatasetReader {
@@ -33,13 +33,13 @@ public class JdbcDatasetReader implements DatasetReader {
         String key = Optional.ofNullable(s.connection()).orElse("default");
         NamedParameterJdbcTemplate tpl = templates.getOrDefault(key, templates.get("default"));
         return tpl.query(s.query(), params, (rs, i) -> {
-            int c = rs.getMetaData().getColumnCount();
-            Map<String,Object> map = new LinkedHashMap<>();
-            for (int k=1; k<=c; k++) {
+            int columnCount = rs.getMetaData().getColumnCount();
+            Map<String,Object> row = new LinkedCaseInsensitiveMap<>(columnCount);
+            for (int k = 1; k <= columnCount; k++) {
                 String name = rs.getMetaData().getColumnLabel(k);
-                map.put(name, rs.getObject(k));
+                row.put(name, rs.getObject(k));
             }
-            return map;
+            return row;
         });
     }
 }
