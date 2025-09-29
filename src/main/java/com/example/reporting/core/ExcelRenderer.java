@@ -46,12 +46,12 @@ public class ExcelRenderer {
         for (String k : data.keySet()) ctx.putVar(k, data.get(k));
         ctx.putVar("meta", meta);
 
-        try (Workbook templateWorkbook = WorkbookFactory.create(templateStream)) {
+        try (Workbook templateWorkbook = WorkbookFactory.create(templateStream);
+             OutputStream os = Files.newOutputStream(out)) {
             PoiTransformer transformer = PoiTransformer.createSxssfTransformer(templateWorkbook, 1000, true);
+            transformer.setOutputStream(os);
             JxlsHelper.getInstance().setUseFastFormulaProcessor(true).processTemplate(ctx, transformer);
-            try (OutputStream os = Files.newOutputStream(out)) {
-                transformer.getWorkbook().write(os);
-            }
+            transformer.write();
             return out;
         }
     }
