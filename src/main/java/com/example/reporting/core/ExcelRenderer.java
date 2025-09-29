@@ -53,8 +53,6 @@ public class ExcelRenderer {
                 transformer.getWorkbook().write(os);
             }
             return out;
-        } catch (org.apache.poi.openxml4j.exceptions.InvalidFormatException e) {
-            throw new IOException("Invalid Excel template format", e);
         }
     }
 
