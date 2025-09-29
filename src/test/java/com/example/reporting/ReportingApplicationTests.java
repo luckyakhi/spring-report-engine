@@ -3,18 +3,20 @@ package com.example.reporting;
 import com.example.reporting.core.ReportRunnerService;
 import com.example.reporting.store.ReportConfigEntity;
 import com.example.reporting.store.ReportConfigRepository;
-import org.apache.poi.ss.usermodel.*;
-import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.test.context.ActiveProfiles;
 
 import java.io.ByteArrayOutputStream;
+import java.net.URL;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.LocalDate;
+import java.util.List;
 import java.util.Map;
+import java.util.zip.ZipEntry;
+import java.util.zip.ZipOutputStream;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -33,19 +35,7 @@ reportCode: DEMO-ACCOUNTS
 version: 1.0
 template:
   path: inline
-  sheets:
-    - name: "Details"
-      bindings:
-        - type: table
-          area: "A2"
-          dataset: "details"
-          columns:
-            - header: "ID"
-              field: "id"
-            - header: "NAME"
-              field: "name"
-            - header: "BAL"
-              field: "balance"
+  sheets: []
 datasets:
   - name: details
     source:
@@ -57,8 +47,8 @@ output:
   storage: "."
 """;
 
-        // Create a JXLS template workbook programmatically:
-        byte[] template = buildTemplate();
+        // Load the JXLS template workbook from the classpath:
+        byte[] template = loadZippedTemplateFromDirectory("/templates/demo_accounts_template/");
 
         ReportConfigEntity e = new ReportConfigEntity();
         e.setReportCode("DEMO-ACCOUNTS");
@@ -79,38 +69,30 @@ output:
 
         // Basic sanity: file size > 0
         assertThat(Files.size(output)).isGreaterThan(1000);
-    }
+}
 
-    private byte[] buildTemplate() throws Exception {
-        try (XSSFWorkbook wb = new XSSFWorkbook()) {
-            Sheet sh = wb.createSheet("Details");
-            // Header row
-            Row h = sh.createRow(0);
-            h.createCell(0).setCellValue("ID");
-            h.createCell(1).setCellValue("NAME");
-            h.createCell(2).setCellValue("BAL");
+    private byte[] loadZippedTemplateFromDirectory(String resourceDir) throws Exception {
+        URL directoryUrl = getClass().getResource(resourceDir);
+        assertThat(directoryUrl).as("template directory resource").isNotNull();
 
-            // Row with JXLS expressions
-            Row r = sh.createRow(1);
-            r.createCell(0).setCellValue("${row.id}");
-            r.createCell(1).setCellValue("${row.name}");
-            r.createCell(2).setCellValue("${row.balance}");
-
-            // Put jx:each directive in a cell comment anchored to A2
-            CreationHelper factory = wb.getCreationHelper();
-            Drawing<?> drawing = sh.createDrawingPatriarch();
-            ClientAnchor anchor = factory.createClientAnchor();
-            anchor.setCol1(0);
-            anchor.setCol2(3);
-            anchor.setRow1(1);
-            anchor.setRow2(3);
-            Comment comment = drawing.createCellComment(anchor);
-            comment.setString(factory.createRichTextString("jx:area(lastCell=\"C2\")\njx:each(items=\"details\" var=\"row\")"));
-            sh.getRow(1).getCell(0).setCellComment(comment);
-
-            ByteArrayOutputStream bos = new ByteArrayOutputStream();
-            wb.write(bos);
-            return bos.toByteArray();
+        Path directory = Path.of(directoryUrl.toURI());
+        try (ByteArrayOutputStream baos = new ByteArrayOutputStream();
+             ZipOutputStream zipOut = new ZipOutputStream(baos)) {
+            List<Path> files;
+            try (var paths = Files.walk(directory)) {
+                files = paths.filter(Files::isRegularFile)
+                        .sorted()
+                        .toList();
+            }
+            for (Path path : files) {
+                String entryName = directory.relativize(path).toString().replace('\\', '/');
+                ZipEntry entry = new ZipEntry(entryName);
+                zipOut.putNextEntry(entry);
+                Files.copy(path, zipOut);
+                zipOut.closeEntry();
+            }
+            zipOut.finish();
+            return baos.toByteArray();
         }
     }
 }
