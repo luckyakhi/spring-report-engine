@@ -5,7 +5,6 @@ import com.example.reporting.domain.*;
 import org.apache.poi.ss.usermodel.*;
 import org.apache.poi.xssf.streaming.SXSSFWorkbook;
 import org.jxls.common.Context;
-import org.jxls.transform.poi.PoiTransformer;
 import org.jxls.util.JxlsHelper;
 import org.springframework.stereotype.Component;
 
@@ -46,12 +45,16 @@ public class ExcelRenderer {
         for (String k : data.keySet()) ctx.putVar(k, data.get(k));
         ctx.putVar("meta", meta);
 
-        try (Workbook templateWorkbook = WorkbookFactory.create(templateStream);
+        byte[] templateBytes;
+        try (templateStream) {
+            templateBytes = templateStream.readAllBytes();
+        }
+
+        try (InputStream is = new ByteArrayInputStream(templateBytes);
              OutputStream os = Files.newOutputStream(out)) {
-            PoiTransformer transformer = PoiTransformer.createSxssfTransformer(templateWorkbook, 1000, true);
-            transformer.setOutputStream(os);
-            JxlsHelper.getInstance().setUseFastFormulaProcessor(true).processTemplate(ctx, transformer);
-            transformer.write();
+            JxlsHelper.getInstance()
+                    .setUseFastFormulaProcessor(true)
+                    .processTemplate(is, os, ctx);
             return out;
         }
     }
